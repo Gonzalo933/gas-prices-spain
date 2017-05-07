@@ -32,7 +32,7 @@ async.waterfall([
 			alreadyChecked = (row['dd'] == today)
 		}, function () {
 			if (alreadyChecked)
-				callback('Already Checked');
+				callback('Already Checked ');
 			else
 				callback(null);
 		});
@@ -78,7 +78,7 @@ function requestGasData(callback) {
 			});
 		} else {
 			//sendMail('ERROR (L46): ' + gasData['Fecha']);
-			callback('ERROR request');
+			callback('ERROR request ');
 		}
 	});
 }
@@ -167,5 +167,5 @@ function allCompleted(callback) {
 		stmt.run(1, today);
 		stmt.finalize();
 	});
-	callback(null, 'OK');
+	callback(null, 'OK ');
 }
