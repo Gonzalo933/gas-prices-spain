@@ -4,6 +4,11 @@ var request = require('request');
 var moment = require('moment');
 var cron = require('node-cron');
 var exec = require('child_process').exec;
+var async = require('async');
+/*
+
+THE CODE IS SOOOO DIRTY, BUT I NEED THE DATA NOT CLEAN CODE
+*/
 
 /*
 - Diseñar BD
@@ -13,16 +18,42 @@ var exec = require('child_process').exec;
 - tests
 */
 //var start = Date.now();
-var db = initializeDb();
+
+var db = new sqlite3.Database('gas_prices.db');
+var today = new moment().format("DD/MM/YYYY");
+async.waterfall([
+	createDbPrices,
+	createDb,
+	function (callback) {
+		var alreadyChecked = false;
+		db.each("SELECT date as dd FROM gas_last WHERE num = 1", function (err, row) {
+			if (err) throw err;
+			if (row == undefined) return;
+			alreadyChecked = (row['dd'] == today)
+		}, function () {
+			if (alreadyChecked)
+				callback('Already Checked');
+			else
+				callback(null);
+		});
+	},
+	requestGasData,
+], function (err, result) {
+	if (err) {		
+		sendMail(err + today);
+		process.exit(1);
+		//throw err;
+	} else {
+		console.log(result);
+		sendMail(result + today);
+	}
+});
 /*cron.schedule('* * * * *', function () {
 	createDb(db);
 	requestGasData(db);
 });*/
-createDb(db);
-requestGasData(db);
 
-
-function requestGasData(db) {
+function requestGasData(callback) {
 	var options = {
 		url: 'https://sedeaplicaciones.minetur.gob.es/ServiciosRESTCarburantes/PreciosCarburantes/EstacionesTerrestres/',
 		method: 'GET',
@@ -43,10 +74,11 @@ function requestGasData(db) {
 			responseToFile(gasData);
 			db.close(function () {
 				//console.log("Total time: " + (Date.now() - start) + "ms");
-				sendMail('OK ' + gasData['Fecha']);
+				allCompleted(callback);
 			});
 		} else {
-			sendMail('ERROR (L46): ' + gasData['Fecha']);
+			//sendMail('ERROR (L46): ' + gasData['Fecha']);
+			callback('ERROR request');
 		}
 	});
 }
@@ -88,11 +120,7 @@ function insertDataToDb(db, rows, todayDate) {
 		});*/
 	});
 }
-function initializeDb() {
-	var db = new sqlite3.Database('gas_prices.db');
-	return db;
-}
-function createDb(db) {
+function createDbPrices(callback) {
 	db.run("CREATE TABLE IF NOT EXISTS  `gas_data` ("
 		+ "`c_p`	TEXT,"
 		+ "`address`	TEXT,"
@@ -107,8 +135,14 @@ function createDb(db) {
 		+ "`idprovincia`	INTEGER,"
 		+ "`idccaa`	INTEGER,"
 		+ "`date`	INTEGER NOT NULL,"
-		+ "PRIMARY KEY(`ideess`,`date`));")
-	return db;
+		+ "PRIMARY KEY(`ideess`,`date`));", callback);
+}
+function createDb(callback) {
+	db.run("CREATE TABLE IF NOT EXISTS  `gas_last` ("
+		+ "`num`	INTEGER,"
+		+ "`date`	TEXT,"
+		+ "PRIMARY KEY(`num`));", callback);
+
 }
 
 function responseToFile(response) {
@@ -125,4 +159,13 @@ function cleanUpResponse(response) {
 
 function sendMail(body) {
 	exec('echo ' + body + ' | mailx -s "GAS_PRICES" gonzalo.hernandez.1293@gmail.com', function (error, stdout, stderr) { });
+}
+
+function allCompleted(callback) {
+	db.serialize(function () {
+		var stmt = db.prepare("INSERT INTO gas_last VALUES (?,?)");
+		stmt.run(1, today);
+		stmt.finalize();
+	});
+	callback(null, 'OK');
 }
