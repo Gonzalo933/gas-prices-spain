@@ -16,10 +16,11 @@ THE CODE IS SOOOO DIRTY, BUT I NEED THE DATA NOT CLEAN CODE
 - guardar datos
 - hacerlo npm task para que se ejecute periodicamente
 - tests
+- db.serialize seems to be useless, so trash it
 */
 //var start = Date.now();
-
-var db = new sqlite3.Database('gas_prices.db');
+var db_location = '/home/gonzalo/gas-prices-spain/gas_prices.db';
+var db = new sqlite3.Database(db_location);
 var today = new moment().format("DD/MM/YYYY");
 async.waterfall([
 	createDbPrices,
@@ -29,10 +30,11 @@ async.waterfall([
 		db.each("SELECT date as dd FROM gas_last WHERE num = 1", function (err, row) {
 			if (err) throw err;
 			if (row == undefined) return;
-			alreadyChecked = (row['dd'] == today)
+			alreadyChecked = (row['dd'] == today);
+			//console.log(alreadyChecked + ' '+ row['dd']);
 		}, function () {
 			if (alreadyChecked)
-				callback('Already Checked ');
+				callback('ALREADY_CHECKED');
 			else
 				callback(null);
 		});
@@ -40,19 +42,26 @@ async.waterfall([
 	requestGasData,
 ], function (err, result) {
 	if (err) {		
-		sendMail(err + today);
-		process.exit(1);
+		if(err == 'ALREADY_CHECKED'){// This is fine, not an error
+			console.log("Already checked today");
+			process.exit();
+		}
+		
+		sendMail(err+' '+ today, function(){ db.close(); process.exit(1);});		
+		console.log("Finished with Errors");		
 		//throw err;
 	} else {
 		console.log(result);
-		sendMail(result + today);
+		sendMail(result+' '+ today, function(){ db.close(); process.exit();});		
 	}
 });
+
 /*cron.schedule('* * * * *', function () {
 	createDb(db);
 	requestGasData(db);
 });*/
 
+/***************************** MY FUNCTIONS ****************************/
 function requestGasData(callback) {
 	var options = {
 		url: 'https://sedeaplicaciones.minetur.gob.es/ServiciosRESTCarburantes/PreciosCarburantes/EstacionesTerrestres/',
@@ -65,7 +74,7 @@ function requestGasData(callback) {
 		if (!error && response.statusCode == 200) {
 			var gasData = cleanUpResponse(JSON.parse(body));
 			if (gasData.ListaEESSPrecio.length <= 0) {
-				console.log("ERROR.");
+				callback('SERVICE_NOT_AVAILABLE');
 				return;
 			}
 			var todayDate = new moment(gasData['Fecha'], 'DD/MM/YYYY').unix();
@@ -78,7 +87,7 @@ function requestGasData(callback) {
 			});
 		} else {
 			//sendMail('ERROR (L46): ' + gasData['Fecha']);
-			callback('ERROR request ');
+			callback('ERROR_IN_REQUEST');
 		}
 	});
 }
@@ -157,15 +166,16 @@ function cleanUpResponse(response) {
 	return response;
 }
 
-function sendMail(body) {
-	exec('echo ' + body + ' | mailx -s "GAS_PRICES" gonzalo.hernandez.1293@gmail.com', function (error, stdout, stderr) { });
+function sendMail(body, callback) {
+	exec('echo ' + body + ' | mailx -s "GAS_PRICES" gonzalo.hernandez.1293@gmail.com', function (error, stdout, stderr) { 
+		if(callback)
+			callback();
+	});
 }
 
 function allCompleted(callback) {
 	db.serialize(function () {
-		var stmt = db.prepare("INSERT INTO gas_last VALUES (?,?)");
-		stmt.run(1, today);
-		stmt.finalize();
+		var stmt = db.prepare("INSERT OR REPLACE INTO gas_last VALUES (1,?)");
+		stmt.run(today, function(){ callback(null, 'OK'); } );
 	});
-	callback(null, 'OK ');
 }
