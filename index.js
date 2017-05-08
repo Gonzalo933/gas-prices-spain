@@ -31,7 +31,6 @@ async.waterfall([
 			if (err) throw err;
 			if (row == undefined) return;
 			alreadyChecked = (row['dd'] == today);
-			//console.log(alreadyChecked + ' '+ row['dd']);
 		}, function () {
 			if (alreadyChecked)
 				callback('ALREADY_CHECKED');
