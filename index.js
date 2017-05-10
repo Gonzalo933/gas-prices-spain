@@ -42,7 +42,7 @@ async.waterfall([
 ], function (err, result) {
 	if (err) {		
 		if(err == 'ALREADY_CHECKED'){// This is fine, not an error
-			console.log("Already checked today");
+			console.log("Already checked today" + generateStats());
 			process.exit();
 		}
 		
@@ -51,7 +51,7 @@ async.waterfall([
 		//throw err;
 	} else {
 		console.log(result);
-		sendMail(result+' '+ today, function(){ db.close(); process.exit();});		
+		sendMail(result+' '+ today + generateStats(), function(){ db.close(); process.exit();});		
 	}
 });
 
@@ -85,7 +85,6 @@ function requestGasData(callback) {
 				allCompleted(callback);
 			});
 		} else {
-			//sendMail('ERROR (L46): ' + gasData['Fecha']);
 			callback('ERROR_IN_REQUEST');
 		}
 	});
@@ -178,3 +177,18 @@ function allCompleted(callback) {
 		stmt.run(today, function(){ callback(null, 'OK'); } );
 	});
 }
+
+function generateStats(){
+	var statsText = 
+	`\nStats:\n 
+	DB Size(Mb): ${getFileSize(db_location)}\n`;
+	return statsText;
+}
+
+function getFileSize(filename){
+	const stats = fs.statSync(filename);
+	return stats.size/1000000.0;
+}
+
+
+
