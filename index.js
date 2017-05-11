@@ -173,7 +173,7 @@ function cleanUpResponse(response) {
 }
 
 function sendMail(body, callback) {
-	exec('echo ' + body + ' | mailx -s "GAS_PRICES" gonzalo.hernandez.1293@gmail.com',
+	exec('echo "' + body + '" | mailx -s "GAS_PRICES" gonzalo.hernandez.1293@gmail.com',
 		function (error, stdout, stderr) {
 			console.log("stdout: "+stdout);
 			console.log("stderror: "+stderr);
