@@ -47,7 +47,7 @@ async.waterfall([
 	} else {
 		console.log(result);
 		async.waterfall([
-			generateStats(callback),
+			generateStats,
 			function (stats, callback) {
 				if (err) {
 					console.log("Finished with Errors");
