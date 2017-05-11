@@ -190,8 +190,9 @@ function generateStats(callback) {
 	var statsText =
 		`\nStats:\n 
 	DB Size(Mb): ${getFileSize(db_location)}\n`;
-	callback(null, statsText);
-	return;
+	if(callback)
+		callback(null, statsText);
+	return statsText;
 }
 
 function getFileSize(filename) {
