@@ -173,7 +173,8 @@ function cleanUpResponse(response) {
 }
 
 function sendMail(body, callback) {
-	exec('echo "' + escapeShell(body) + '" | mailx -s "GAS_PRICES" gonzalo.hernandez.1293@gmail.com',
+	var contents = file.writeFileSync("temp_mail.txt", body);
+	exec('mailx -s "GAS_PRICES" gonzalo.hernandez.1293@gmail.com < temp_mail.txt',
 		function (error, stdout, stderr) {
 			console.log("stdout: "+stdout);
 			console.log("stderror: "+stderr);
