@@ -2,7 +2,7 @@ var sqlite3 = require('sqlite3').verbose();
 var fs = require('fs');
 var request = require('request');
 var moment = require('moment');
-var cron = require('node-cron');
+//var cron = require('node-cron');
 var exec = require('child_process').exec;
 var async = require('async');
 /*
@@ -40,18 +40,26 @@ async.waterfall([
 	},
 	requestGasData,
 ], function (err, result) {
-	if (err) {		
-		if(err == 'ALREADY_CHECKED'){// This is fine, not an error
-			console.log("Already checked today" + generateStats());
-			process.exit();
-		}
-		
-		sendMail(err+' '+ today, function(){ db.close(); process.exit(1);});		
-		console.log("Finished with Errors");		
-		//throw err;
+	if (err && err == 'ALREADY_CHECKED') {
+		console.log("Already checked today" + generateStats());
+		db.close();
+		process.exit();
 	} else {
 		console.log(result);
-		sendMail(result+' '+ today + generateStats(), function(){ db.close(); process.exit();});		
+		async.waterfall([
+			generateStats(callback),
+			function (stats, callback) {
+				if (err) {
+					console.log("Finished with Errors");
+					sendMail(err + ' ' + today, callback);
+				} else
+					sendMail(result + ' ' + today + stats, callback);
+			},
+		], function (err, res) {
+			if (err) throw err;
+			db.close();
+			process.exit();
+		});
 	}
 });
 
@@ -165,29 +173,30 @@ function cleanUpResponse(response) {
 }
 
 function sendMail(body, callback) {
-	exec('echo ' + body + ' | mailx -s "GAS_PRICES" gonzalo.hernandez.1293@gmail.com', function (error, stdout, stderr) { 
-		if(callback)
-			callback();
-	});
+	exec('echo ' + body + ' | mailx -s "GAS_PRICES" gonzalo.hernandez.1293@gmail.com',
+		function (error, stdout, stderr) {
+			callback(null);
+		});
 }
 
 function allCompleted(callback) {
 	db.serialize(function () {
 		var stmt = db.prepare("INSERT OR REPLACE INTO gas_last VALUES (1,?)");
-		stmt.run(today, function(){ callback(null, 'OK'); } );
+		stmt.run(today, function () { callback(null, 'OK'); });
 	});
 }
 
-function generateStats(){
-	var statsText = 
-	`\nStats:\n 
+function generateStats(callback) {
+	var statsText =
+		`\nStats:\n 
 	DB Size(Mb): ${getFileSize(db_location)}\n`;
-	return statsText;
+	callback(null, statsText);
+	return;
 }
 
-function getFileSize(filename){
+function getFileSize(filename) {
 	const stats = fs.statSync(filename);
-	return stats.size/1000000.0;
+	return stats.size / 1000000.0;
 }
 
 
