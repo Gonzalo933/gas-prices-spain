@@ -44,8 +44,7 @@ async.waterfall([
 		console.log("Already checked today" + generateStats());
 		db.close();
 		process.exit();
-	} else {
-		console.log(result);
+	} else {		
 		async.waterfall([
 			generateStats,
 			function (stats, callback) {
@@ -57,6 +56,7 @@ async.waterfall([
 			},
 		], function (err, res) {
 			if (err) throw err;
+			console.log(res);
 			db.close();
 			process.exit();
 		});
@@ -175,7 +175,7 @@ function cleanUpResponse(response) {
 function sendMail(body, callback) {
 	exec('echo ' + body + ' | mailx -s "GAS_PRICES" gonzalo.hernandez.1293@gmail.com',
 		function (error, stdout, stderr) {
-			callback(null);
+			callback(null, body);
 		});
 }
 
