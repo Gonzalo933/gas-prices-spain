@@ -10,6 +10,7 @@ from sqlite3 import Error
 import datetime
 import matplotlib.pyplot as plt
 import seaborn as sns
+import matplotlib.dates as md
 
 def create_connection(db_file):
 	""" create a database connection to the SQLite database
@@ -25,7 +26,6 @@ def create_connection(db_file):
 
 	return None
 
-
 def get_prices_for_station(conn, station_id):
 	cur = conn.cursor()
 	cur.execute("""SELECT date, diesel_price
@@ -33,13 +33,19 @@ def get_prices_for_station(conn, station_id):
 					WHERE ideess={0}""".format(station_id))
 
 	rows = cur.fetchall()
-	return list(map(lambda x: [x[0],date_to_str(x[0]) , x[1]], rows))
+	return list(map(lambda x: [x[0], date_to_time(x[0]), x[1]], rows))
 
-def date_to_str(unix):
-	return datetime.datetime.fromtimestamp(int(unix)).strftime('%Y/%m/%d')
+def date_to_time(unix):
+	return datetime.datetime.fromtimestamp(int(unix))#.strftime('%Y/%m/%d')
 
 def draw_graph(rows):
-	plt.plot([r[2] for r in rows], [r[2] for r in rows], color='red', label='prices €')
+	ax=plt.gca()
+	xfmt = md.DateFormatter('%d/%m')
+	ax.xaxis.set_major_formatter(xfmt)
+	dates = md.date2num([r[1] for r in rows])
+	values = [r[2] for r in rows]
+	plt.plot(dates, values, color='red', label='prices €')
+	plt.savefig('Prices_history.png')
 
 def main():
 	database = "gas_prices.db"
