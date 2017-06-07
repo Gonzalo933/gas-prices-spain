@@ -52,7 +52,7 @@ def main():
 	# create a database connection
 	conn = create_connection(database)
 	with conn:
-		rows = get_prices_for_station(conn, 8456)
+		rows = get_prices_for_station(conn, 13393)  # 8456
 	draw_graph(rows)
 
 
