@@ -44,8 +44,8 @@ def draw_graph(rows):
 	ax.xaxis.set_major_formatter(xfmt)
 	dates = md.date2num([r[1] for r in rows])
 	values = [r[2] for r in rows]
-	plt.plot(dates, values, color='red', label='prices €')
-	plt.savefig('Prices_history.png')
+	plt.plot(dates, values, color='red', label='prices €', marker='o')
+	plt.savefig('Prices_history.png', dpi=800)
 
 def main():
 	database = "gas_prices.db"
